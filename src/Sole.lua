@@ -30,4 +30,37 @@ function Sole:checkSole()
     return true
 end
 
+function Sole:check(values, candidates)
+    values = values or {}
+    if candidates == nil then
+        candidates = {}
+        for _, grid in ipairs(self.group) do
+            local value = grid:getValue()
+            if value > 0 then
+                values[value] = true
+            else
+                candidates[grid] = true
+            end
+        end
+    else
+        for grid, _ in pairs(candidates) do
+            local value = grid:getValue()
+            if value > 0 then
+                values[value] = true
+                candidates[grid] = nil
+            end
+        end
+    end
+
+end
+
+function Sole:deleteCandidate(value)
+    local modi = false
+    for _, grid in ipairs(self.group) do
+        if grid:deleteCandidate(value) then
+            modi = true
+        end
+    end
+    return modi
+end
 return Sole

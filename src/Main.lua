@@ -4,6 +4,7 @@
 ---
 package.path = package.path .. ";../../../usefulLib/lua/?.lua"
 require("class")
+require("Logger")
 
 
 local sudoku = require("Sudoku").new({
@@ -18,6 +19,7 @@ local sudoku = require("Sudoku").new({
     0,0,0,0,2,0,1,4,7,
 })
 
-print(sudoku:output())
+logError("ddd" , 123)
+--print(sudoku:output())
 sudoku:baseCheck()
-print(sudoku:output(true))
+--print(sudoku:output())

@@ -11,14 +11,14 @@ local Sole = require("Sole")
 ---@class Sudoku
 ---@field rows Sole[]
 ---@field lines Sole[]
----@field square Sole[]
+---@field squares Sole[]
 ---@field grids Grid[]
 local Sudoku = class("Sudoku")
 
 function Sudoku:ctor(valueMap)
     self.rows = {}
     self.lines = {}
-    self.square = {}
+    self.squares = {}
     local grids = {}
 
     if #valueMap ~= Const.MAX_LINE * Const.MAX_ROW then
@@ -57,7 +57,7 @@ function Sudoku:getGroup(groupType, index)
     local group
     if groupType == GroupType.ROW then group = self.rows end
     if groupType == GroupType.LINE then group = self.lines end
-    if groupType == GroupType.SQUARE then group = self.square end
+    if groupType == GroupType.SQUARE then group = self.squares end
     if group[index] == nil then
         group[index] = Sole.new()
     end
@@ -89,6 +89,34 @@ function Sudoku:baseCheck()
     end
     if modi then
         self:baseCheck()
+    end
+end
+
+function Sudoku:checkDirty()
+    local modi = false
+    for i, group in ipairs(self.rows) do
+        if group:isDirty() then
+            print("check rows", i)
+            modi = true
+            group:checkDirty()
+        end
+    end
+    for i, group in ipairs(self.lines) do
+        if group:isDirty() then
+            print("check lines", i)
+            modi = true
+            group:checkDirty()
+        end
+    end
+    for i, group in ipairs(self.squares) do
+        if group:isDirty() then
+            print("check squares", i)
+            modi = true
+            group:checkDirty()
+        end
+    end
+    if modi then
+        self:checkDirty()
     end
 end
 

@@ -74,4 +74,14 @@ function Grid:deleteCandidate(value)
     return false
 end
 
+function Grid:deleteCandidates(values)
+    local ismodi = false
+    for _, value in ipairs(values) do
+        if self:deleteCandidate(value) then
+            ismodi = true
+        end
+    end
+    return ismodi
+end
+
 return Grid

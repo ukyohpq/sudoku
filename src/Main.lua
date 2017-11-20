@@ -37,10 +37,10 @@ local f2 = function()
     print(2)
 end
 
-a:addEventListener("ff", b.ff, nil, 0, true)
+a:addEventListener("ff", b.ff, nil, 0, false)
 --a:removeEventListener("ff", b.ff, nil, 0, true)
---a:addEventListener("ff", f2, nil, 1, false)
-b = nil
+a:addEventListener("ff", f2, nil, 1, false)
+--b = nil
 collectgarbage()
 for t, v in pairs(c) do
     print(t)

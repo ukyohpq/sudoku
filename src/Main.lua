@@ -21,5 +21,12 @@ local sudoku = require("Sudoku").new({
 
 print(sudoku:output())
 sudoku:checkDirty()
---sudoku:baseCheck()
-print(sudoku:output())
+print(sudoku:output(true))
+local ret = sudoku:checkSuccess()
+if ret == 0 then
+    sudoku:makeSavePoint()
+end
+---@type Sudoku
+local su2 = clone(sudoku)
+su2:guess()
+print(su2:output(true))

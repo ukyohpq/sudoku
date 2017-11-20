@@ -9,11 +9,11 @@
 ---@field square number
 ---@field value number
 ---@field candidate number[]
----@field dirty boolean
 local Grid = class("Grid", require("Event.EventDispatcher"))
 ---@type Event.EventDispatcher
 local super = Grid.super
-Grid.ON_DIRTY = "onDirty"
+Grid.FIX_NEW_VALUE = "fixNewValue"
+Grid.DIRTY = "dirty"
 
 
 function Grid:ctor(row, line, square, value)
@@ -30,7 +30,6 @@ function Grid:ctor(row, line, square, value)
     else
         self.candidate = {value}
     end
-    self.dirty = false
 end
 
 function Grid:getRow()
@@ -59,7 +58,7 @@ end
 
 function Grid:setValue(value)
     self.candidate = {value}
-    self:checkDirty()
+    self:checkNewFixValue()
 end
 
 function Grid:toString()
@@ -81,38 +80,22 @@ function Grid:deleteCandidate(value)
     for i, v in ipairs(self.candidate) do
         if v == value then
             table.remove(self.candidate, i)
-            if #self.candidate == 1 then
-                self:checkDirty()
-            end
+            self:dispatchEvent(Grid.DIRTY)
+            self:checkNewFixValue()
             return true
         end
     end
     return false
 end
 
-function Grid:checkDirty()
-    if self.dirty == false and self:getValue() > 0 then
-        self:dispatchEvent(Grid.ON_DIRTY)
-        self.dirty = true
+function Grid:checkNewFixValue()
+    if #self.candidate == 1 then
+        self:dispatchEvent(Grid.FIX_NEW_VALUE)
     end
 end
 
 function Grid:getCandidate()
     return self.candidate
-end
-
-function Grid:isDirty()
-   return self.dirty
-end
-
-function Grid:deleteCandidates(values)
-    local ismodi = false
-    for _, value in ipairs(values) do
-        if self:deleteCandidate(value) then
-            ismodi = true
-        end
-    end
-    return ismodi
 end
 
 return Grid

@@ -13,6 +13,7 @@ local Sole = require("Sole")
 ---@field lines Sole[]
 ---@field squares Sole[]
 ---@field grids Grid[]
+---@field origin Sudoku
 local Sudoku = class("Sudoku")
 
 function Sudoku:ctor(valueMap)
@@ -59,42 +60,29 @@ function Sudoku:getGroup(groupType, index)
     if groupType == GroupType.LINE then group = self.lines end
     if groupType == GroupType.SQUARE then group = self.squares end
     if group[index] == nil then
-        group[index] = Sole.new(GroupType.ROW)
+        group[index] = Sole.new(GroupType.ROW, index)
     end
     return group[index]
 end
 
----baseCheck @基础的行列宫排除法
-function Sudoku:baseCheck()
-    local modi = false
-    for _, row in ipairs(self.rows) do
-        row:deleteCandidate()
+function Sudoku:checkDirty()
+    ---@type Sole[][]
+    local arr = {self.rows, self.lines, self.squares}
+    for _, soles in ipairs(arr) do
+        for _, sole in ipairs(soles) do
+            sole:checkDirty()
+        end
     end
-    for _, grid in ipairs(self.grids) do
-        local value = grid:getValue()
-        if value > 0 then
-            local lineGroup = self:getGroup(GroupType.LINE, grid:getLine())
-            if lineGroup:deleteCandidate(value) then
-                modi = true
-            end
-            local rowGroup = self:getGroup(GroupType.ROW, grid:getRow())
-            if rowGroup:deleteCandidate(value) then
-                modi = true
-            end
-            local squareGroup = self:getGroup(GroupType.SQUARE, grid:getSquare())
-            if squareGroup:deleteCandidate(value) then
-                modi = true
+    local dirty = false
+    for _, soles in ipairs(arr) do
+        for _, sole in ipairs(soles) do
+            if sole:isDirty() then
+                dirty = true
             end
         end
     end
-    if modi then
-        self:baseCheck()
-    end
-end
-
-function Sudoku:checkDirty()
-    for _, grid in ipairs(self.grids) do
-        grid:checkDirty()
+    if dirty then
+        self:checkDirty()
     end
 end
 
@@ -122,4 +110,38 @@ function Sudoku:output(verbose)
     return s
 end
 
+function Sudoku:checkSuccess()
+    ---@type Sole[][]
+    local arr = {self.rows, self.lines, self.squares}
+    local successInfo = 1
+    for _, soles in ipairs(arr) do
+        for _, sole in ipairs(soles) do
+            local ret = sole:checkSole()
+            if ret == -1 then
+                return -1
+            end
+            if ret == 0 then
+                successInfo = 0
+            end
+        end
+    end
+    return successInfo
+end
+
+function Sudoku:guess()
+    for _, grid in ipairs(self.grids) do
+        if #grid:getCandidate() == 2 then
+            grid:setValue(grid:getCandidate()[1])
+            break
+        end
+    end
+    self:checkDirty()
+end
+
+function Sudoku:makeSavePoint()
+    ---@type Sudoku
+    local copy = clone(self)
+    copy.origin = self
+    return copy
+end
 return Sudoku

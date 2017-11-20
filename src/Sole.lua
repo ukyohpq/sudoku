@@ -5,19 +5,23 @@
 local Grid = require("Grid")
 
 ---@class Sole
+---@field id number
 ---@field group Grid[]
----@field dirtyGrid Grid[]
+---@field newFixedValues number[]
 ---@field candidateGrids Grid[]
 ---@field groupType GroupType
+---@field dirty boolean
 local Sole = class("Sole")
 
 ---ctor
 ---@param groupType GroupType
-function Sole:ctor(groupType)
+function Sole:ctor(groupType, id)
+    self.id = id
     self.group = {}
-    self.dirtyGrid = {}
+    self.newFixedValues = {}
     self.candidateGrids = {}
     self.groupType = groupType
+    self.dirty = false
 end
 
 function Sole:getGroupType()
@@ -30,79 +34,50 @@ function Sole:addGrid(grid)
     table.insert(self.group, grid)
     local value = grid:getValue()
     if value > 0 then
-        table.insert(self.dirtyGrid, grid)
+        table.insert(self.newFixedValues, value)
     else
         table.insert(self.candidateGrids, grid)
     end
-    grid:addEventListener(Grid.ON_DIRTY, self.onGridDirty, self)
+    grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
+    grid:addEventListener(Grid.DIRTY, self.onDirty, self)
 end
 
 function Sole:checkSole()
-    local map = {}
     for _, grid in ipairs(self.group) do
-        local value = grid:getValue()
-        if value ~= nil and value ~= 0 then
-            if map[value] == nil then
-                map[value] = true
-            else
-                return false
-            end
+        local candidate = grid:getCandidate()
+        local len = #candidate
+        if len == 0 then
+            return -1
+        elseif len > 1 then
+            return 0
         end
     end
-    return true
+    return 1
 end
 
-function Sole:check(values, candidates)
-    values = values or {}
-    if candidates == nil then
-        candidates = {}
-        for _, grid in ipairs(self.group) do
-            local value = grid:getValue()
-            if value > 0 then
-                values[value] = true
-            else
-                candidates[grid] = true
-            end
-        end
-    else
-        for grid, _ in pairs(candidates) do
-            local value = grid:getValue()
-            if value > 0 then
-                values[value] = true
-                candidates[grid] = nil
-            end
-        end
-    end
 
+function Sole:hasNewFixValue()
+    return #self.newFixedValues > 0
 end
 
-function Sole:deleteCandidate(value)
-    local modi = false
-    for _, grid in ipairs(self.group) do
-        if grid:deleteCandidate(value) then
-            modi = true
-        end
-    end
-    return modi
-end
-
-function Sole:isDirty()
-    return #self.dirtyGrid > 0
-end
-
-function Sole:deleteCandidate2()
+function Sole:checkDirty()
+    local dirtyValues = clone(self.newFixedValues)
+    self.newFixedValues = {}
     for i = #self.candidateGrids, 1, -1 do
         local grid = self.candidateGrids[i]
-        for j, dGrid in ipairs(self.dirtyGrid) do
-            grid:removeEventListener(Grid.ON_DIRTY, self.onGridDirty, self)
-            grid:deleteCandidate(dGrid:getValue())
+        for j, dValue in ipairs(dirtyValues) do
+            grid:deleteCandidate(dValue)
         end
         if grid:getValue() > 0 then
             table.remove(self.candidateGrids, i)
         end
-        grid:addEventListener(Grid.ON_DIRTY, self.onGridDirty, self)
     end
-    self.dirtyGrid = {}
+    if self:hasNewFixValue() then
+        self:checkDirty()
+    else
+        self.dirty = false
+        self:checkUnique()
+    end
 end
 
 function Sole:checkUnique()
@@ -116,24 +91,31 @@ function Sole:checkUnique()
             table.insert(tb[candidate], grid)
         end
     end
-    for cValue, grids in ipairs(tb) do
+    for cValue, grids in pairs(tb) do
         if #grids == 1 then
             local grid = grids[1]
-            print("unique", cValue)
-            grid:removeEventListener(Grid.ON_DIRTY, self.onGridDirty, self)
             grid:setValue(cValue)
             table.removeElement(self.candidateGrids, grid)
-            grid:addEventListener(Grid.ON_DIRTY, self.onGridDirty, self)
         end
     end
 end
 
 ---onGridDirty
 ---@param eventData Event.EventData
-function Sole:onGridDirty(eventData)
-    table.insert(self.dirtyGrid, eventData:getTarget())
-    self:deleteCandidate2()
-    self:checkUnique()
+function Sole:onFixNewValue(eventData)
+    ---@type Grid
+    local grid = eventData:getTarget()
+    table.insert(self.newFixedValues, grid:getValue())
+end
+
+---onDirty
+---@param eventData Event.EventData
+function Sole:onDirty(eventData)
+    self.dirty = true
+end
+
+function Sole:isDirty()
+    return self.dirty
 end
 
 return Sole

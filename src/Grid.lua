@@ -3,15 +3,21 @@
 --- DateTime: 17/11/16 17:22
 ---
 
----@class Grid
+---@class Grid : Event.EventDispatcher
 ---@field row number
 ---@field line number
 ---@field square number
 ---@field value number
 ---@field candidate number[]
-local Grid = class("Grid")
+---@field dirty boolean
+local Grid = class("Grid", require("Event.EventDispatcher"))
+---@type Event.EventDispatcher
+local super = Grid.super
+Grid.ON_DIRTY = "onDirty"
+
 
 function Grid:ctor(row, line, square, value)
+    super.ctor(self)
     if value == nil then
         value = 0
     end
@@ -19,10 +25,12 @@ function Grid:ctor(row, line, square, value)
     self.row = row
     self.line = line
     self.square = square
-    self.value = value
     if value == 0 then
         self.candidate = {1,2,3,4,5,6,7,8,9}
+    else
+        self.candidate = {value}
     end
+    self.dirty = false
 end
 
 function Grid:getRow()
@@ -38,16 +46,25 @@ function Grid:getSquare()
 end
 
 function Grid:reset()
-    self.value = 0
+    self.candidate = {1,2,3,4,5,6,7,8,9}
 end
 
 function Grid:getValue()
-    return self.value
+    if #self.candidate == 1 then
+        return self.candidate[1]
+    else
+        return 0
+    end
 end
 
-function Grid:tosting()
-    if self.value > 0 then
-        return tostring(self.value)
+function Grid:setValue(value)
+    self.candidate = {value}
+    self:checkDirty()
+end
+
+function Grid:toString()
+    if self:getValue() > 0 then
+        return tostring(self:getValue())
     end
     local s = "[ "
     for _, cand in ipairs(self.candidate) do
@@ -58,20 +75,34 @@ function Grid:tosting()
 end
 
 function Grid:deleteCandidate(value)
-    if self.candidate == nil then
+    if #self.candidate == 1 then
         return false
     end
     for i, v in ipairs(self.candidate) do
         if v == value then
             table.remove(self.candidate, i)
             if #self.candidate == 1 then
-                self.value = self.candidate[1]
-                self.candidate = nil
+                self:checkDirty()
             end
             return true
         end
     end
     return false
+end
+
+function Grid:checkDirty()
+    if self.dirty == false and self:getValue() > 0 then
+        self:dispatchEvent(Grid.ON_DIRTY)
+        self.dirty = true
+    end
+end
+
+function Grid:getCandidate()
+    return self.candidate
+end
+
+function Grid:isDirty()
+   return self.dirty
 end
 
 function Grid:deleteCandidates(values)

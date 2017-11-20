@@ -59,7 +59,7 @@ function Sudoku:getGroup(groupType, index)
     if groupType == GroupType.LINE then group = self.lines end
     if groupType == GroupType.SQUARE then group = self.squares end
     if group[index] == nil then
-        group[index] = Sole.new()
+        group[index] = Sole.new(GroupType.ROW)
     end
     return group[index]
 end
@@ -93,43 +93,9 @@ function Sudoku:baseCheck()
 end
 
 function Sudoku:checkDirty()
-    local modi = false
-    for i, group in ipairs(self.rows) do
-        if group:isDirty() then
-            print("check rows", i)
-            modi = true
-            group:checkDirty()
-        end
+    for _, grid in ipairs(self.grids) do
+        grid:checkDirty()
     end
-    for i, group in ipairs(self.lines) do
-        if group:isDirty() then
-            print("check lines", i)
-            modi = true
-            group:checkDirty()
-        end
-    end
-    for i, group in ipairs(self.squares) do
-        if group:isDirty() then
-            print("check squares", i)
-            modi = true
-            group:checkDirty()
-        end
-    end
-    if modi then
-        self:checkDirty()
-    end
-end
-
-function Sudoku:checkRow(index)
-    
-end
-
-function Sudoku:checkLine(index)
-    
-end
-
-function Sudoku:checkSquare(index)
-    
 end
 
 function Sudoku:output(verbose)
@@ -138,7 +104,7 @@ function Sudoku:output(verbose)
     for _, grid in ipairs(self.grids) do
         n = n + 1
         if verbose then
-            s = s .. grid:tosting()
+            s = s .. grid:toString()
         else
             if grid:getValue() == 0 then
                 s = s .. " "

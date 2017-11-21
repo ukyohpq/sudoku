@@ -130,16 +130,6 @@ function Sudoku:checkSuccess()
     return successInfo
 end
 
-function Sudoku:guess()
-    for _, grid in ipairs(self.grids) do
-        if #grid:getCandidate() == 2 then
-            grid:setValue(grid:getCandidate()[1])
-            break
-        end
-    end
-    self:checkDirty()
-end
-
 function Sudoku:makeSavePoint()
     --通过record还原遍历的位置
     local startIndex = 1

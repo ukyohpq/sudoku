@@ -4,7 +4,11 @@
 ---
 
 function logErr(...)
-    local s = tostring(unpack({...})) .. "\n"
+    local s = ""
+    for _, v in ipairs({...}) do
+        s = s .. tostring(v) .. " "
+    end
+    s = s .. "\n"
     s = s .. debug.traceback()
     print(s)
 end

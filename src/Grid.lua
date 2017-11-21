@@ -17,8 +17,10 @@ local Grid = class("Grid", require("Event.EventDispatcher"))
 ---@type Event.EventDispatcher
 local super = Grid.super
 
+---当数字确定时广播
 Grid.FIX_NEW_VALUE = "fixNewValue"
-Grid.DIRTY = "dirty"
+---当删除候选数时广播
+Grid.DELETE_CANDIDATE = "deleteCandidate"
 
 
 function Grid:ctor(row, line, square, value)
@@ -62,6 +64,8 @@ function Grid:getValue()
     end
 end
 
+---setValue 直接设置确定值，用在组合唯一性处理时
+---@param value number
 function Grid:setValue(value)
     self.candidate = {value}
     self:checkNewFixValue()
@@ -79,6 +83,9 @@ function Grid:toString()
     return s
 end
 
+---deleteCandidate @从候选数中删除指定的数字
+---@param value number @要删除的候选数
+---@return boolean @是否成功删除
 function Grid:deleteCandidate(value)
     if #self.candidate == 1 then
         return false
@@ -86,7 +93,7 @@ function Grid:deleteCandidate(value)
     for i, v in ipairs(self.candidate) do
         if v == value then
             table.remove(self.candidate, i)
-            self:dispatchEvent(Grid.DIRTY)
+            self:dispatchEvent(Grid.DELETE_CANDIDATE)
             self:checkNewFixValue()
             return true
         end

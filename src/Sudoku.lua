@@ -67,6 +67,7 @@ function Sudoku:getGroup(groupType, index)
     return group[index]
 end
 
+---checkDirty @对每个组合进行dirty测试，直到没有组合为dirty
 function Sudoku:checkDirty()
     ---@type Sole[][]
     local arr = {self.rows, self.lines, self.squares}

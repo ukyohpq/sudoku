@@ -28,7 +28,7 @@ function Sole:getGroupType()
     return self.groupType
 end
 
----addGrid
+---addGrid @添加一个格子，同时添加两个事件：格子确定数字的事件，和格子删除候选数的事件
 ---@param grid Grid
 function Sole:addGrid(grid)
     table.insert(self.group, grid)
@@ -39,9 +39,10 @@ function Sole:addGrid(grid)
         table.insert(self.candidateGrids, grid)
     end
     grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
-    grid:addEventListener(Grid.DIRTY, self.onDirty, self)
+    grid:addEventListener(Grid.DELETE_CANDIDATE, self.onDeleteCandidate, self)
 end
 
+---checkSole @检测组合是否有重复数字的错误
 function Sole:checkSole()
     for _, grid in ipairs(self.group) do
         local candidate = grid:getCandidate()
@@ -56,10 +57,13 @@ function Sole:checkSole()
 end
 
 
+---hasNewFixValue @是否有新的确定数
 function Sole:hasNewFixValue()
     return #self.newFixedValues > 0
 end
 
+---checkDirty @对组合进行dirty测试，标记为dirty的组合，需要去重，若经过去重，发现了新的确定数字，
+---需要重新进行dirty测试，直到没有新数字出现，然后进行唯一性检测
 function Sole:checkDirty()
     local dirtyValues = clone(self.newFixedValues)
     self.newFixedValues = {}
@@ -80,6 +84,7 @@ function Sole:checkDirty()
     end
 end
 
+---checkUnique @组合检测唯一性。
 function Sole:checkUnique()
     ---@type table<number, Grid[]>
     local tb = {}
@@ -100,7 +105,7 @@ function Sole:checkUnique()
     end
 end
 
----onGridDirty
+---onGridDirty @新数字确定事件
 ---@param eventData Event.EventData
 function Sole:onFixNewValue(eventData)
     ---@type Grid
@@ -108,9 +113,9 @@ function Sole:onFixNewValue(eventData)
     table.insert(self.newFixedValues, grid:getValue())
 end
 
----onDirty
+---onDirty @删除候选数事件，此时认为组合dirty，需要重新检测
 ---@param eventData Event.EventData
-function Sole:onDirty(eventData)
+function Sole:onDeleteCandidate(eventData)
     self.dirty = true
 end
 

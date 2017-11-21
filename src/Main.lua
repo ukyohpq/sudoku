@@ -7,7 +7,7 @@ require("class")
 require("Logger")
 require("Utils.TableUtil")
 
-local empty = {
+local arr = {
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
@@ -55,7 +55,7 @@ local arr3 = {
     0,1,9,3,0,5,6,0,0,
 }
 
-local arr = {
+local arr4 = {
     6,1,0,0,3,0,0,0,0,
     0,0,9,0,0,0,0,0,4,
     0,0,0,0,0,6,0,5,0,
@@ -67,12 +67,38 @@ local arr = {
     0,0,0,0,7,0,0,0,6,
 }
 
+local arr5 = {
+    0,0,4,0,0,2,7,1,0,
+    9,0,0,0,5,7,0,6,8,
+    6,0,0,0,0,0,0,2,0,
+    0,0,0,0,8,0,0,0,4,
+    0,0,0,7,0,0,0,0,0,
+    0,0,0,0,2,9,6,0,0,
+    0,0,1,0,7,8,0,0,0,
+    0,0,0,1,4,0,9,0,7,
+    0,0,9,0,0,6,0,8,0,
+}
+
+local arr = {
+    5,0,4,0,0,2,0,0,8,
+    2,0,0,7,0,0,6,0,0,
+    0,8,3,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    6,0,5,0,4,0,0,1,0,
+    4,0,8,0,0,6,0,2,5,
+    0,0,0,0,1,0,2,4,0,
+    0,0,7,0,0,0,0,0,1,
+    0,0,6,0,0,0,7,3,0,
+}
 local sudoku = require("Sudoku").new(arr)
 
 print(sudoku:output())
 sudoku:checkDirty()
+--print(sudoku:output(true))
+--local ret = sudoku:checkSuccess()
+--if ret == SuccessInfo.UNCOMPLETE then
+    --sudoku:resetNewGuess()
+    --sudoku:guess()
+    sudoku:guess2()
+--end
 print(sudoku:output(true))
-local ret = sudoku:checkSuccess()
-if ret == SuccessInfo.UNCOMPLETE then
-    sudoku:makeSavePoint()
-end

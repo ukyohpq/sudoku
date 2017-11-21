@@ -44,18 +44,52 @@ end
 
 ---checkSole @检测组合是否有重复数字的错误
 function Sole:checkSole()
+    local ret = 1
+    local valueMap = {}
     for _, grid in ipairs(self.group) do
         local candidate = grid:getCandidate()
         local len = #candidate
         if len == 0 then
             return -1
         elseif len > 1 then
-            return 0
+            ret = 0
+        else
+            local value = grid:getValue()
+            if valueMap[value] then
+                return -1
+            end
+            valueMap[value] = true
         end
     end
-    return 1
+    return ret
 end
 
+---checkSole @检测组合是否有重复数字的错误
+function Sole:checkSole2()
+    local valueMap = {}
+    for _, grid in ipairs(self.group) do
+        local candidate = grid:getCandidate()
+        local len = #candidate
+        if len == 0 then
+            return false
+        elseif len > 1 then
+            if grid.cIndex > 0 then
+                local value = grid.candidate[grid.cIndex]
+                if valueMap[value] then
+                    return false
+                end
+                valueMap[value] = true
+            end
+        else
+            local value = grid:getValue()
+            if valueMap[value] then
+                return false
+            end
+            valueMap[value] = true
+        end
+    end
+    return true
+end
 
 ---hasNewFixValue @是否有新的确定数
 function Sole:hasNewFixValue()

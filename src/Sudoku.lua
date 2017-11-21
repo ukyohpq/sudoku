@@ -7,19 +7,21 @@ require("Const")
 
 local Grid = require("Grid")
 local Sole = require("Sole")
-
+local HistoryRecorder = require("History.HistoryRecorder")
 ---@class Sudoku
 ---@field rows Sole[]
 ---@field lines Sole[]
 ---@field squares Sole[]
 ---@field grids Grid[]
 ---@field origin Sudoku
+---@field recorder History.HistoryRecorder
 local Sudoku = class("Sudoku")
 
 function Sudoku:ctor(valueMap)
     self.rows = {}
     self.lines = {}
     self.squares = {}
+    self.recorder = HistoryRecorder.new()
     local grids = {}
 
     if #valueMap ~= Const.MAX_LINE * Const.MAX_ROW then
@@ -113,15 +115,15 @@ end
 function Sudoku:checkSuccess()
     ---@type Sole[][]
     local arr = {self.rows, self.lines, self.squares}
-    local successInfo = 1
+    local successInfo = SuccessInfo.COMPLETE
     for _, soles in ipairs(arr) do
         for _, sole in ipairs(soles) do
             local ret = sole:checkSole()
             if ret == -1 then
-                return -1
+                return SuccessInfo.WRONG
             end
             if ret == 0 then
-                successInfo = 0
+                successInfo = SuccessInfo.UNCOMPLETE
             end
         end
     end
@@ -139,9 +141,35 @@ function Sudoku:guess()
 end
 
 function Sudoku:makeSavePoint()
-    ---@type Sudoku
-    local copy = clone(self)
-    copy.origin = self
-    return copy
+    --通过record还原遍历的位置
+    local startIndex = 1
+    if self.recorder:hasRecord() then
+        local record = self.recorder:getRecord()
+        startIndex = record
+    end
+    --保存所有的grid的状态
+    for _, grid in ipairs(self.grids) do
+        grid:record()
+    end
+    for i = startIndex, #self.grids  do
+        local grid = self.grids[i]
+        if #grid:getCandidate() == 2 then
+            self.recorder:createRecord(i)
+            grid:setValue(grid:getCandidate()[1])
+            break
+        end
+    end
+    self:checkDirty()
+
+    local si = self:checkSuccess()
+    if si == SuccessInfo.COMPLETE then
+        print("success!!!!")
+    elseif si == SuccessInfo.WRONG then
+        print("wrong!!!!")
+    else
+        print("uncomplete!!!!")
+        self:makeSavePoint()
+    end
+    print(self:output())
 end
 return Sudoku

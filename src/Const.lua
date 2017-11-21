@@ -16,3 +16,9 @@ GroupType = {
     LINE = 2,
     SQUARE = 3,
 }
+
+SuccessInfo = {
+    WRONG = -1,
+    UNCOMPLETE = 0,
+    COMPLETE = 1,
+}

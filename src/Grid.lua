@@ -3,15 +3,20 @@
 --- DateTime: 17/11/16 17:22
 ---
 
+local HistoryRecorder = require("History.HistoryRecorder")
+
 ---@class Grid : Event.EventDispatcher
 ---@field row number
 ---@field line number
 ---@field square number
 ---@field value number
 ---@field candidate number[]
+---@field recorder History.HistoryRecorder
 local Grid = class("Grid", require("Event.EventDispatcher"))
+
 ---@type Event.EventDispatcher
 local super = Grid.super
+
 Grid.FIX_NEW_VALUE = "fixNewValue"
 Grid.DIRTY = "dirty"
 
@@ -30,6 +35,7 @@ function Grid:ctor(row, line, square, value)
     else
         self.candidate = {value}
     end
+    self.recorder = HistoryRecorder.new()
 end
 
 function Grid:getRow()
@@ -96,6 +102,25 @@ end
 
 function Grid:getCandidate()
     return self.candidate
+end
+
+function Grid:record()
+    self.recorder:createRecord(clone(self.candidate))
+end
+
+function Grid:revertRecord()
+    self.candidate = clone(self.recorder:getRecord())
+end
+
+function Grid:hasRecord()
+    return self.recorder:hasRecord()
+end
+
+function Grid:revertToPrevRecord()
+    if self:hasRecord() then
+        self.recorder:undo()
+        self:revertRecord()
+    end
 end
 
 return Grid

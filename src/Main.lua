@@ -102,15 +102,20 @@ local arr = {
     0,0,7,0,0,0,0,0,1,
     0,0,6,0,0,0,7,3,0,
 }
-local sudoku = require("Sudoku").new(arr3)
+--local sudoku = require("Sudoku").new(arr3)
+--
+--print(sudoku:output())
+--sudoku:checkDirty()
+--print(sudoku:output(true))
+----local ret = sudoku:checkSuccess()
+----if ret == SuccessInfo.UNCOMPLETE then
+--    --sudoku:resetNewGuess()
+--    --sudoku:guess()
+--    sudoku:guess2()
+----end
+--print(sudoku:output(true))
 
-print(sudoku:output())
-sudoku:checkDirty()
-print(sudoku:output(true))
---local ret = sudoku:checkSuccess()
---if ret == SuccessInfo.UNCOMPLETE then
-    --sudoku:resetNewGuess()
-    --sudoku:guess()
-    sudoku:guess2()
---end
-print(sudoku:output(true))
+local tb = {a = 1, b = 2}
+
+print(#tb)
+print(table.maxn(tb))

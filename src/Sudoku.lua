@@ -15,14 +15,25 @@ local HistoryRecorder = require("History.HistoryRecorder")
 ---@field grids Grid[]
 ---@field origin Sudoku
 ---@field recorder History.HistoryRecorder
+---@field forCheckGrids Grid[]
+---@field checkingGrids Grid[]
+---@field uniqueDirtySoleMap table<Sole, boolean>
+---@field state number
 local Sudoku = class("Sudoku")
+
+local STATES = {
+    NORMAL = 1,
+    CHECK_REPEAT = 2,
+    UNIQUE = 3,
+    GUESS = 4,
+}
 
 function Sudoku:ctor(valueMap)
     self.rows = {}
     self.lines = {}
     self.squares = {}
     self.recorder = HistoryRecorder.new()
-
+    self.uniqueDirtySoleMap = {}
     local grids = {}
     if #valueMap ~= Const.MAX_LINE * Const.MAX_ROW then
         print("err. value map length is not match")
@@ -44,6 +55,8 @@ function Sudoku:ctor(valueMap)
             line:addGrid(grid)
             square:addGrid(grid)
             table.insert(grids, grid)
+            grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
+            grid:addEventListener(Grid.DELETE_CANDIDATE, self.onDeleteCandidate, self)
         end
     end
     self.grids = grids
@@ -286,4 +299,50 @@ function Sudoku:guess()
     end
     --print(self:output())
 end
+
+function Sudoku:testFun()
+    self.checkingGrids = {}
+    for _, grid in ipairs(self.grids) do
+        if grid:getValue() > 0 then
+            table.insert(self.checkingGrids, grid)
+        end
+    end
+    self.state = STATES.NORMAL
+
+    while(true) do
+        if self.state == STATES.NORMAL then
+            if #self.checkingGrids > 0 then
+                self.state = STATES.CHECK_REPEAT
+            elseif table.maxn(self.uniqueDirtySoleMap) > 0 then
+                self.state = STATES.UNIQUE
+            else
+                self.state = STATES.GUESS
+            end
+        elseif self.state == STATES.CHECK_REPEAT then
+            for _, checkingGrid in ipairs(self.checkingGrids) do
+                checkingGrid:startDeleteRepeat()
+            end
+        elseif self.state == STATES.UNIQUE then
+            for sole, _ in pairs(self.uniqueDirtySoleMap) do
+                sole:checkUnique()
+            end
+        end
+    end
+end
+
+---onFixNewValue
+---@param event Event.EventData
+function Sudoku:onFixNewValue(event)
+    table.insert(self.checkingGrids, event:getTarget())
+end
+
+---onDeleteCandidate
+---@param event Event.EventData
+function Sudoku:onDeleteCandidate(event)
+    local grid = event:getTarget()
+    self.uniqueDirtySoleMap[self.rows[grid:getRow()]] = true
+    self.uniqueDirtySoleMap[self.lines[grid:getLine()]] = true
+    self.uniqueDirtySoleMap[self.squares[grid:getSquare()]] = true
+end
+
 return Sudoku

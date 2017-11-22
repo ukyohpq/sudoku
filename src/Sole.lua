@@ -38,8 +38,9 @@ function Sole:addGrid(grid)
     else
         table.insert(self.candidateGrids, grid)
     end
-    grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
-    grid:addEventListener(Grid.DELETE_CANDIDATE, self.onDeleteCandidate, self)
+    --grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
+    --grid:addEventListener(Grid.DELETE_CANDIDATE, self.onDeleteCandidate, self)
+    grid:addEventListener(Grid.START_DELETE_REPEAT, self.onStartDeleteRepeat, self)
 end
 
 ---checkSole @检测组合是否有重复数字的错误
@@ -139,22 +140,43 @@ function Sole:checkUnique()
     end
 end
 
----onGridDirty @新数字确定事件
----@param eventData Event.EventData
-function Sole:onFixNewValue(eventData)
-    ---@type Grid
-    local grid = eventData:getTarget()
-    table.insert(self.newFixedValues, grid:getValue())
-end
+-----onGridDirty @新数字确定事件
+-----@param eventData Event.EventData
+--function Sole:onFixNewValue(eventData)
+--    ---@type Grid
+--    local grid = eventData:getTarget()
+--    table.insert(self.newFixedValues, grid:getValue())
+--end
 
----onDirty @删除候选数事件，此时认为组合dirty，需要重新检测
----@param eventData Event.EventData
-function Sole:onDeleteCandidate(eventData)
-    self.dirty = true
-end
+-----onDirty @删除候选数事件，此时认为组合dirty，需要重新检测
+-----@param eventData Event.EventData
+--function Sole:onDeleteCandidate(eventData)
+--    self.dirty = true
+--end
 
 function Sole:isDirty()
     return self.dirty
+end
+
+
+---deleteCandidate
+---@param value number
+function Sole:deleteCandidate(value)
+    for _, grid in ipairs(self.group) do
+        grid:deleteCandidate(value)
+    end
+end
+
+
+---onStartDeleteRepeat
+---@param eventData Event.EventData
+function Sole:onStartDeleteRepeat(eventData)
+    ---@type Grid
+    local grid = eventData:getTarget()
+    local value = grid:getValue()
+    for _, grid in ipairs(self.group) do
+        grid:deleteCandidate(value)
+    end
 end
 
 return Sole

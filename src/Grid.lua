@@ -21,7 +21,7 @@ local super = Grid.super
 Grid.FIX_NEW_VALUE = "fixNewValue"
 ---当删除候选数时广播
 Grid.DELETE_CANDIDATE = "deleteCandidate"
-
+Grid.START_DELETE_REPEAT = "startDeleteRepeat"
 
 function Grid:ctor(row, line, square, value)
     super.ctor(self)
@@ -128,6 +128,10 @@ function Grid:revertToPrevRecord()
         self.recorder:undo()
         self:revertRecord()
     end
+end
+
+function Grid:startDeleteRepeat()
+    self:dispatchEvent(Grid.START_DELETE_REPEAT)
 end
 
 return Grid

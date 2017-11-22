@@ -159,35 +159,49 @@ function Sudoku:guess2()
             end
         end
     end
-    self:tttttfun(headGrid)
+    currentGrid = headGrid
+    while(true) do
+        local ret = self:tttttfun(currentGrid)
+        if ret == -1 then
+            print("no answer")
+            return
+        end
+        if ret == 0 then
+            currentGrid.cIndex = 0
+            currentGrid = currentGrid.prev
+        end
+        if ret == 1 then
+            print("success!!")
+            for _, grid in ipairs(self.grids) do
+                if grid.cIndex > 0 then
+                    grid:setValue(grid.candidate[grid.cIndex])
+                end
+            end
+            return
+        end
+        if ret == 2 then
+            currentGrid = currentGrid.next
+        end
+    end
 end
 
 function Sudoku:tttttfun(cGrid)
     cGrid.cIndex = cGrid.cIndex + 1
     if cGrid.cIndex > cGrid.mIndex then
         if cGrid.prev == nil then
-            print("no answer")
+            return -1
         else
-            cGrid.cIndex = 0
-            cGrid = cGrid.prev
-            self:tttttfun(cGrid)
+            return 0
         end
     else
         if self.rows[cGrid.row]:checkSole2()
         and self.lines[cGrid.line]:checkSole2()
         and self.squares[cGrid.square]:checkSole2() then
             if cGrid.next == nil then
-                print("success!!")
-                for _, grid in ipairs(self.grids) do
-                    if grid.cIndex > 0 then
-                        grid:setValue(grid.candidate[grid.cIndex])
-                    end
-                end
+                return 1
             else
-                self:tttttfun(cGrid.next)
+                return 2
             end
-        else
-            self:tttttfun(cGrid)
         end
     end
 end

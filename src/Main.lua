@@ -55,6 +55,18 @@ local arr3 = {
     0,1,9,3,0,5,6,0,0,
 }
 
+local answer3 = {
+    7,	6,	3,	5,	8,	9,	4,	2,	1,
+    4,	9,	5,	2,	1,	6,	3,	7,	8,
+    2,	8,	1,	4,	3,	7,	5,	9,	6,
+    3,	2,	6,	7,	9,	4,	1,	8,	5,
+    9,	7,	8,	6,	5,	1,	2,	3,	4,
+    1,	5,	4,	8,	2,	3,	9,	6,	7,
+    5,	4,	2,	9,	6,	8,	7,	1,	3,
+    6,	3,	7,	1,	4,	2,	8,	5,	9,
+    8,	1,	9,	3,	7,	5,	6,	4,	2,
+}
+
 local arr4 = {
     6,1,0,0,3,0,0,0,0,
     0,0,9,0,0,0,0,0,4,
@@ -90,11 +102,11 @@ local arr = {
     0,0,7,0,0,0,0,0,1,
     0,0,6,0,0,0,7,3,0,
 }
-local sudoku = require("Sudoku").new(arr)
+local sudoku = require("Sudoku").new(arr3)
 
 print(sudoku:output())
 sudoku:checkDirty()
---print(sudoku:output(true))
+print(sudoku:output(true))
 --local ret = sudoku:checkSuccess()
 --if ret == SuccessInfo.UNCOMPLETE then
     --sudoku:resetNewGuess()

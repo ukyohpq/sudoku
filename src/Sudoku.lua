@@ -8,6 +8,12 @@ require("Const")
 local Grid = require("Grid")
 local Sole = require("Sole")
 local HistoryRecorder = require("History.HistoryRecorder")
+
+---@class Record
+---@field gridIndex number
+---@field candidateIndex number
+---@field gridsShortcut number[][]
+
 ---@class Sudoku
 ---@field rows Sole[]
 ---@field lines Sole[]
@@ -19,13 +25,20 @@ local HistoryRecorder = require("History.HistoryRecorder")
 ---@field checkingGrids Grid[]
 ---@field uniqueDirtySoleMap table<Sole, boolean>
 ---@field state number
+---@field unfixGrids Grid[]
+---@field isGuessing boolean
 local Sudoku = class("Sudoku")
 
 local STATES = {
-    NORMAL = 1,
-    CHECK_REPEAT = 2,
-    UNIQUE = 3,
-    GUESS = 4,
+    NORMAL = "NORMAL",
+    CHECK_REPEAT = "CHECK_REPEAT",
+    UNIQUE = "UNIQUE",
+    START_GUESS = "START_GUESS",
+    SUCCESS = "SUCCESS",
+    NO_ANSWER = "NO_ANSWER",
+    GUESS_NEXT = "GUESS_NEXT",
+    GUESS_FAILED = "GUESS_FAILED",
+    GUESS_WRONG = "GUESS_WRONG",
 }
 
 function Sudoku:ctor(valueMap)
@@ -34,6 +47,8 @@ function Sudoku:ctor(valueMap)
     self.squares = {}
     self.recorder = HistoryRecorder.new()
     self.uniqueDirtySoleMap = {}
+    self.unfixGrids = {}
+    self.checkingGrids = {}
     local grids = {}
     if #valueMap ~= Const.MAX_LINE * Const.MAX_ROW then
         print("err. value map length is not match")
@@ -57,6 +72,9 @@ function Sudoku:ctor(valueMap)
             table.insert(grids, grid)
             grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
             grid:addEventListener(Grid.DELETE_CANDIDATE, self.onDeleteCandidate, self)
+            if valueMap[n] == 0 then
+                table.insert(self.unfixGrids, grid)
+            end
         end
     end
     self.grids = grids
@@ -300,40 +318,145 @@ function Sudoku:guess()
     --print(self:output())
 end
 
-function Sudoku:testFun()
-    self.checkingGrids = {}
+function Sudoku:testFun(verbose)
     for _, grid in ipairs(self.grids) do
         if grid:getValue() > 0 then
             table.insert(self.checkingGrids, grid)
         end
     end
     self.state = STATES.NORMAL
-
+    self.isGuessing = false
+    local step = 0
     while(true) do
+        if verbose then
+            print(self.state)
+            step = step + 1
+        end
         if self.state == STATES.NORMAL then
             if #self.checkingGrids > 0 then
                 self.state = STATES.CHECK_REPEAT
-            elseif table.maxn(self.uniqueDirtySoleMap) > 0 then
+            elseif table.mapLen(self.uniqueDirtySoleMap) > 0 then
                 self.state = STATES.UNIQUE
+            --elseif #self.unfixGrids > 0 then
+            --    self.state = STATES.START_GUESS
             else
-                self.state = STATES.GUESS
+                local ret = self:checkSuccess()
+                if ret == SuccessInfo.COMPLETE then
+                    self.state = STATES.SUCCESS
+                elseif ret == SuccessInfo.WRONG then
+                    self.state = STATES.NO_ANSWER
+                elseif ret == SuccessInfo.UNCOMPLETE then
+                    self.state = STATES.START_GUESS
+                end
             end
         elseif self.state == STATES.CHECK_REPEAT then
             for _, checkingGrid in ipairs(self.checkingGrids) do
                 checkingGrid:startDeleteRepeat()
             end
+            if self.isGuessing and self:checkWrong() == false then
+                self.state = STATES.GUESS_WRONG
+            else
+                self.checkingGrids = {}
+                self.state = STATES.NORMAL
+            end
         elseif self.state == STATES.UNIQUE then
             for sole, _ in pairs(self.uniqueDirtySoleMap) do
                 sole:checkUnique()
             end
+            if self.isGuessing and self:checkWrong() == false then
+                self.state = STATES.GUESS_WRONG
+            else
+                self.uniqueDirtySoleMap = {}
+                self.state = STATES.NORMAL
+            end
+        elseif self.state == STATES.START_GUESS then
+            local startIndex = 1
+            if self.recorder:hasRecord() then
+                local record = self.recorder:getRecord()
+                startIndex = record.gridIndex + 1
+            end
+            for i = startIndex, #self.grids do
+                local grid = self.grids[i]
+                if #grid:getCandidate() > 1 then
+                    ---@type Record
+                    local record = {}
+                    record.gridIndex = i
+                    record.candidateIndex = 1
+                    local shortCut = {}
+                    record.gridsShortcut = shortCut
+                    for j, g in ipairs(self.grids) do
+                        shortCut[j] = clone(g:getCandidate())
+                    end
+                    self.recorder:createRecord(record)
+                    self.state = STATES.GUESS_NEXT
+                    self.isGuessing = true
+                    break
+                end
+            end
+        elseif self.state == STATES.GUESS_NEXT then
+            ---@type Record
+            local record = self.recorder:getRecord()
+            local gridIndex = record.gridIndex
+            local candidateIndex = record.candidateIndex
+            local value = record.gridsShortcut[gridIndex][candidateIndex]
+            if value ~= nil then
+                self.grids[record.gridIndex]:setValue(value)
+                record.candidateIndex = record.candidateIndex + 1
+                self.state = STATES.NORMAL
+            else
+                self.state = STATES.GUESS_FAILED
+            end
+        elseif self.state == STATES.SUCCESS then
+            print("success")
+            break
+        elseif self.state == STATES.NO_ANSWER then
+            print("no answer")
+            break
+        elseif self.state == STATES.GUESS_WRONG then
+            ---@type Record
+            local record = self.recorder:getRecord()
+            for i, grid in ipairs(self.grids) do
+                grid.candidate = clone(record.gridsShortcut[i])
+            end
+            self.state = STATES.GUESS_NEXT
+        elseif self.state == STATES.GUESS_FAILED then
+            self.recorder:undo()
+            if self.recorder:hasRecord() then
+                self.state = STATES.GUESS_WRONG
+            else
+                self.state = STATES.NO_ANSWER
+            end
+        end
+        if verbose then
+            print("curStep", step)
+            print(self:output(true))
         end
     end
+    if verbose then
+        print("step", step)
+    end
+end
+
+function Sudoku:checkWrong()
+    ---@type Sole[][]
+    local allSoles = {self.rows, self.lines, self.squares}
+    for _, soles in ipairs(allSoles) do
+        for _, sole in ipairs(soles) do
+            sole:checkSole()
+            if sole:checkSole() == -1 then
+                return false
+            end
+        end
+    end
+    return true
 end
 
 ---onFixNewValue
 ---@param event Event.EventData
 function Sudoku:onFixNewValue(event)
-    table.insert(self.checkingGrids, event:getTarget())
+    local grid = event:getTarget()
+    table.insert(self.checkingGrids, grid)
+    table.removeElement(self.unfixGrids, grid)
 end
 
 ---onDeleteCandidate

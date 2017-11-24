@@ -123,7 +123,8 @@ end
 function Sole:checkUnique()
     ---@type table<number, Grid[]>
     local tb = {}
-    for _, grid in ipairs(self.candidateGrids) do
+    --for _, grid in ipairs(self.candidateGrids) do
+    for _, grid in ipairs(self.group) do
         for _, candidate in ipairs(grid:getCandidate()) do
             if tb[candidate] == nil then
                 tb[candidate] = {}

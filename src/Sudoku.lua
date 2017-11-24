@@ -23,7 +23,7 @@ local HistoryRecorder = require("History.HistoryRecorder")
 ---@field recorder History.HistoryRecorder
 ---@field forCheckGrids Grid[]
 ---@field checkingGrids Grid[]
----@field uniqueDirtySoleMap table<Sole, boolean>
+---@field uniqueDirtySoleMap Sole[]
 ---@field state number
 ---@field unfixGrids Grid[]
 ---@field isGuessing boolean
@@ -335,7 +335,7 @@ function Sudoku:testFun(verbose)
         if self.state == STATES.NORMAL then
             if #self.checkingGrids > 0 then
                 self.state = STATES.CHECK_REPEAT
-            elseif table.mapLen(self.uniqueDirtySoleMap) > 0 then
+            elseif #self.uniqueDirtySoleMap > 0 then
                 self.state = STATES.UNIQUE
             --elseif #self.unfixGrids > 0 then
             --    self.state = STATES.START_GUESS
@@ -360,7 +360,7 @@ function Sudoku:testFun(verbose)
                 self.state = STATES.NORMAL
             end
         elseif self.state == STATES.UNIQUE then
-            for sole, _ in pairs(self.uniqueDirtySoleMap) do
+            for _, sole in pairs(self.uniqueDirtySoleMap) do
                 sole:checkUnique()
             end
             if self.isGuessing and self:checkWrong() == false then
@@ -375,8 +375,31 @@ function Sudoku:testFun(verbose)
                 local record = self.recorder:getRecord()
                 startIndex = record.gridIndex + 1
             end
-            for i = startIndex, #self.grids do
-                local grid = self.grids[i]
+            local gridsClone = {}
+            for i, grid in ipairs(self.grids) do
+                gridsClone[i] = grid
+            end
+            table.sort(gridsClone, function(grid1, grid2)
+                local len1 = #grid1:getCandidate()
+                local len2 = #grid2:getCandidate()
+                if len1 ~= len2 then
+                    return len1 < len2
+                end
+                local row1 = grid1:getRow()
+                local row2 = grid2:getRow()
+                if row1 ~= row2 then
+                    return row1 < row2
+                end
+                return grid1:getLine() < grid2:getLine()
+            end)
+            local aa
+            if use == 1 then
+                aa = self.grids
+            else
+                aa = gridsClone
+            end
+            for i = startIndex, #aa do
+                local grid = aa[i]
                 if #grid:getCandidate() > 1 then
                     ---@type Record
                     local record = {}
@@ -384,7 +407,8 @@ function Sudoku:testFun(verbose)
                     record.candidateIndex = 1
                     local shortCut = {}
                     record.gridsShortcut = shortCut
-                    for j, g in ipairs(self.grids) do
+                    record.gridsClones = gridsClone
+                    for j, g in ipairs(aa) do
                         shortCut[j] = clone(g:getCandidate())
                     end
                     self.recorder:createRecord(record)
@@ -400,7 +424,12 @@ function Sudoku:testFun(verbose)
             local candidateIndex = record.candidateIndex
             local value = record.gridsShortcut[gridIndex][candidateIndex]
             if value ~= nil then
-                self.grids[record.gridIndex]:setValue(value)
+                local aa
+                if use == 1 then
+                    self.grids[record.gridIndex]:setValue(value)
+                else
+                    record.gridsClones[record.gridIndex]:setValue(value)
+                end
                 record.candidateIndex = record.candidateIndex + 1
                 self.state = STATES.NORMAL
             else
@@ -415,7 +444,13 @@ function Sudoku:testFun(verbose)
         elseif self.state == STATES.GUESS_WRONG then
             ---@type Record
             local record = self.recorder:getRecord()
-            for i, grid in ipairs(self.grids) do
+            local aa
+            if use == 1 then
+                aa = self.grids
+            else
+                aa = record.gridsClones
+            end
+            for i, grid in ipairs(aa) do
                 grid.candidate = clone(record.gridsShortcut[i])
             end
             self.state = STATES.GUESS_NEXT
@@ -463,9 +498,22 @@ end
 ---@param event Event.EventData
 function Sudoku:onDeleteCandidate(event)
     local grid = event:getTarget()
-    self.uniqueDirtySoleMap[self.rows[grid:getRow()]] = true
-    self.uniqueDirtySoleMap[self.lines[grid:getLine()]] = true
-    self.uniqueDirtySoleMap[self.squares[grid:getSquare()]] = true
+    self:addUniqueDirtySole(self.rows[grid:getRow()])
+    self:addUniqueDirtySole(self.rows[grid:getLine()])
+    self:addUniqueDirtySole(self.rows[grid:getSquare()])
+    --self.uniqueDirtySoleMap[self.rows[grid:getRow()]] = true
+    --self.uniqueDirtySoleMap[self.lines[grid:getLine()]] = true
+    --self.uniqueDirtySoleMap[self.squares[grid:getSquare()]] = true
 end
 
+---addUniqueDirtySole
+---@param sole Sole
+function Sudoku:addUniqueDirtySole(sole)
+    for _, s in ipairs(self.uniqueDirtySoleMap) do
+        if s == sole then
+            return
+        end
+    end
+    table.insert(self.uniqueDirtySoleMap, sole)
+end
 return Sudoku

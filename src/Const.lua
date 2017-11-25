@@ -10,7 +10,6 @@ Const = {
     SQUARE_WIDTH = 3,
 }
 
----@class GroupType
 GroupType = {
     ROW = 1,
     LINE = 2,

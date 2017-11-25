@@ -5,27 +5,17 @@
 local Grid = require("Grid")
 
 ---@class Sole
----@field id number
 ---@field group Grid[]
 ---@field newFixedValues number[]
 ---@field candidateGrids Grid[]
----@field groupType GroupType
 ---@field dirty boolean
 local Sole = class("Sole")
 
----ctor
----@param groupType GroupType
-function Sole:ctor(groupType, id)
-    self.id = id
+function Sole:ctor()
     self.group = {}
     self.newFixedValues = {}
     self.candidateGrids = {}
-    self.groupType = groupType
     self.dirty = false
-end
-
-function Sole:getGroupType()
-    return self.groupType
 end
 
 ---addGrid @添加一个格子，同时添加两个事件：格子确定数字的事件，和格子删除候选数的事件

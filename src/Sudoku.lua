@@ -25,7 +25,6 @@ local HistoryRecorder = require("History.HistoryRecorder")
 ---@field checkingGrids Grid[]
 ---@field uniqueDirtySoleMap Sole[]
 ---@field state number
----@field unfixGrids Grid[]
 ---@field isGuessing boolean
 local Sudoku = class("Sudoku")
 
@@ -47,7 +46,6 @@ function Sudoku:ctor(valueMap)
     self.squares = {}
     self.recorder = HistoryRecorder.new()
     self.uniqueDirtySoleMap = {}
-    self.unfixGrids = {}
     self.checkingGrids = {}
     local grids = {}
     if #valueMap ~= Const.MAX_LINE * Const.MAX_ROW then
@@ -72,18 +70,9 @@ function Sudoku:ctor(valueMap)
             table.insert(grids, grid)
             grid:addEventListener(Grid.FIX_NEW_VALUE, self.onFixNewValue, self)
             grid:addEventListener(Grid.DELETE_CANDIDATE, self.onDeleteCandidate, self)
-            if valueMap[n] == 0 then
-                table.insert(self.unfixGrids, grid)
-            end
         end
     end
     self.grids = grids
-end
-
-function Sudoku:reset()
-    for _, grid in ipairs(self.grids) do
-        grid:reset()
-    end
 end
 
 function Sudoku:getGroup(groupType, index)
@@ -93,7 +82,7 @@ function Sudoku:getGroup(groupType, index)
     if groupType == GroupType.LINE then group = self.lines end
     if groupType == GroupType.SQUARE then group = self.squares end
     if group[index] == nil then
-        group[index] = Sole.new(GroupType.ROW, index)
+        group[index] = Sole.new()
     end
     return group[index]
 end
@@ -162,13 +151,9 @@ function Sudoku:checkSuccess()
     return successInfo
 end
 
-function Sudoku:resetNewGuess()
-    self.gridIndex = 1
-    self.candidateIndex = 1
-    self.needNewGuess = true
-end
-
-function Sudoku:guess2()
+---gridLinkGuess 使用grid链表进行候选数猜测
+---@param verbose boolean
+function Sudoku:gridLinkGuess(verbose)
     ---@type Grid
     local headGrid = nil
     ---@type Grid
@@ -191,11 +176,15 @@ function Sudoku:guess2()
         end
     end
     currentGrid = headGrid
+    local step = 0
     while(true) do
-        local ret = self:tttttfun(currentGrid)
+        if verbose then
+            step = step + 1
+        end
+        local ret = self:guessNext(currentGrid)
         if ret == -1 then
             print("no answer")
-            return
+            break
         end
         if ret == 0 then
             currentGrid.cIndex = 0
@@ -208,15 +197,20 @@ function Sudoku:guess2()
                     grid:setValue(grid.candidate[grid.cIndex])
                 end
             end
-            return
+            break
         end
         if ret == 2 then
             currentGrid = currentGrid.next
         end
     end
+    if verbose then
+        print("step", step)
+    end
 end
 
-function Sudoku:tttttfun(cGrid)
+---guessNext
+---@param cGrid Grid
+function Sudoku:guessNext(cGrid)
     cGrid.cIndex = cGrid.cIndex + 1
     if cGrid.cIndex > cGrid.mIndex then
         if cGrid.prev == nil then
@@ -236,89 +230,11 @@ function Sudoku:tttttfun(cGrid)
         end
     end
 end
----getGuessParam
----猜数。如果基础的处理，没有把所有的未知数全部找到，那么就需要猜数。
----遍历grids，遇到有候选数的grid，就从第一个候选数开始猜，此时保存所有grid以及当前猜测进度的快照，然后使用基础处理法，
----如果不能成功，看是否有错误，如果有错误，那么需要通过快照回滚到猜数时的状态，然后看猜的grid是否还有下一个候选数，
----有就猜下一个候选数，没有，就猜下一个有候选数的grid的第一个数，如果连有候选数的grid都没有了，说明猜测进入了死胡同，
----这种情况只能出现在“猜上加猜”(下面有解释)的情况下，所以需要抛弃该快照，回滚到上一快照时的状态，再进行下一步猜测。
----如果没有错误，看是否破题，如果没有破题，则保存当前进度快照，在猜测的基础之上再猜，即前面说的“猜上加猜”的情况。
-function Sudoku:getGuessParam()
-    --初始化格子索引gridIndex和参考数索引candidateIndex都为1
-    local gridIndex = self.gridIndex
-    local candidateIndex = self.candidateIndex
-    --取得记录的grid
-    local grid = self.grids[gridIndex]
-    --检测这个grid还有没有剩余参考数
-    --如果有，那么就是用下一个参考数作为猜测数
-    --否则，就找下一个未确定的grid，取其第一个参考数为猜测数
-    --如果所有都找遍了，那么就退回到上一个记录点，再找
-    --print(self:output(true))
-    if #grid:getCandidate() < candidateIndex + 1 then
-        for i = gridIndex + 1, #self.grids do
-            local g = self.grids[i]
-            if #g:getCandidate() > 1 then
-                gridIndex = i
-                candidateIndex = 1
-                break
-            end
-        end
-    else
-        candidateIndex = candidateIndex + 1
-    end
-    --self.recorder:createRecord(gridIndex, candidateIndex)
-    return gridIndex, candidateIndex
-end
 
-function Sudoku:revertRecord()
-    self.recorder:undo()
-    self.gridIndex = self.recorder:getRecord()[1]
-    self.candidateIndex = self.recorder:getRecord()[2]
-    for _, grid in ipairs(self.grids) do
-        grid:revertToPrevRecord()
-    end
-end
-
-function Sudoku:guess()
-    local gridIndex, candidateIndex = self:getGuessParam()
-    if self.gridIndex == gridIndex and self.candidateIndex == candidateIndex then
-        if self.recorder:hasRecord() then
-            self:revertRecord()
-        else
-            print("failed!!")
-            return
-        end
-    else
-        self.recorder:createRecord({gridIndex, candidateIndex})
-    end
-    --保存所有的grid的状态
-    for _, grid in ipairs(self.grids) do
-        grid:record()
-    end
-    local grid = self.grids[gridIndex]
-    grid:setValue(grid:getCandidate()[candidateIndex])
-    self:checkDirty()
-
-    local si = self:checkSuccess()
-    if si == SuccessInfo.COMPLETE then
-        print("success!!!!")
-    elseif si == SuccessInfo.WRONG then
-        print("wrong!!!!")
-        for _, grid in ipairs(self.grids) do
-            grid:revertRecord()
-        end
-        self.gridIndex = self.recorder:getRecord()[1]
-        self.candidateIndex = self.recorder:getRecord()[2]
-        self:guess()
-    else
-        print("uncomplete!!!!")
-        self:resetNewGuess()
-        self:guess()
-    end
-    --print(self:output())
-end
-
-function Sudoku:testFun(verbose)
+---getAnswer
+---@param littleGuess boolean @是否使用最小候选数猜测
+---@param verbose boolean @是否显示详细信息
+function Sudoku:getAnswer(littleGuess, verbose)
     for _, grid in ipairs(self.grids) do
         if grid:getValue() > 0 then
             table.insert(self.checkingGrids, grid)
@@ -337,8 +253,6 @@ function Sudoku:testFun(verbose)
                 self.state = STATES.CHECK_REPEAT
             elseif #self.uniqueDirtySoleMap > 0 then
                 self.state = STATES.UNIQUE
-            --elseif #self.unfixGrids > 0 then
-            --    self.state = STATES.START_GUESS
             else
                 local ret = self:checkSuccess()
                 if ret == SuccessInfo.COMPLETE then
@@ -372,6 +286,7 @@ function Sudoku:testFun(verbose)
         elseif self.state == STATES.START_GUESS then
             local startIndex = 1
             if self.recorder:hasRecord() then
+                ---@type Record
                 local record = self.recorder:getRecord()
                 startIndex = record.gridIndex + 1
             end
@@ -392,14 +307,15 @@ function Sudoku:testFun(verbose)
                 end
                 return grid1:getLine() < grid2:getLine()
             end)
-            local aa
-            if use == 1 then
-                aa = self.grids
+            ---@type Grid[]
+            local grids
+            if littleGuess then
+                grids = self.grids
             else
-                aa = gridsClone
+                grids = gridsClone
             end
-            for i = startIndex, #aa do
-                local grid = aa[i]
+            for i = startIndex, #grids do
+                local grid = grids[i]
                 if #grid:getCandidate() > 1 then
                     ---@type Record
                     local record = {}
@@ -408,7 +324,7 @@ function Sudoku:testFun(verbose)
                     local shortCut = {}
                     record.gridsShortcut = shortCut
                     record.gridsClones = gridsClone
-                    for j, g in ipairs(aa) do
+                    for j, g in ipairs(grids) do
                         shortCut[j] = clone(g:getCandidate())
                     end
                     self.recorder:createRecord(record)
@@ -424,12 +340,14 @@ function Sudoku:testFun(verbose)
             local candidateIndex = record.candidateIndex
             local value = record.gridsShortcut[gridIndex][candidateIndex]
             if value ~= nil then
-                local aa
-                if use == 1 then
-                    self.grids[record.gridIndex]:setValue(value)
+                ---@type Grid[]
+                local grids
+                if littleGuess then
+                    grids = self.grids
                 else
-                    record.gridsClones[record.gridIndex]:setValue(value)
+                    grids = record.gridsClones
                 end
+                grids[record.gridIndex]:setValue(value)
                 record.candidateIndex = record.candidateIndex + 1
                 self.state = STATES.NORMAL
             else
@@ -444,13 +362,14 @@ function Sudoku:testFun(verbose)
         elseif self.state == STATES.GUESS_WRONG then
             ---@type Record
             local record = self.recorder:getRecord()
-            local aa
-            if use == 1 then
-                aa = self.grids
+            ---@type Grid[]
+            local grids
+            if littleGuess then
+                grids = self.grids
             else
-                aa = record.gridsClones
+                grids = record.gridsClones
             end
-            for i, grid in ipairs(aa) do
+            for i, grid in ipairs(grids) do
                 grid.candidate = clone(record.gridsShortcut[i])
             end
             self.state = STATES.GUESS_NEXT
@@ -491,19 +410,16 @@ end
 function Sudoku:onFixNewValue(event)
     local grid = event:getTarget()
     table.insert(self.checkingGrids, grid)
-    table.removeElement(self.unfixGrids, grid)
 end
 
 ---onDeleteCandidate
 ---@param event Event.EventData
 function Sudoku:onDeleteCandidate(event)
+    ---@type Grid
     local grid = event:getTarget()
     self:addUniqueDirtySole(self.rows[grid:getRow()])
     self:addUniqueDirtySole(self.rows[grid:getLine()])
     self:addUniqueDirtySole(self.rows[grid:getSquare()])
-    --self.uniqueDirtySoleMap[self.rows[grid:getRow()]] = true
-    --self.uniqueDirtySoleMap[self.lines[grid:getLine()]] = true
-    --self.uniqueDirtySoleMap[self.squares[grid:getSquare()]] = true
 end
 
 ---addUniqueDirtySole

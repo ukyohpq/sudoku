@@ -113,7 +113,7 @@ local arr5 = {
     0,0,9,0,0,6,0,8,0,
 }
 
-local arr = {
+local arr6 = {
     5,0,4,0,0,2,0,0,8,
     2,0,0,7,0,0,6,0,0,
     0,8,3,0,0,0,0,0,0,
@@ -123,6 +123,18 @@ local arr = {
     0,0,0,0,1,0,2,4,0,
     0,0,7,0,0,0,0,0,1,
     0,0,6,0,0,0,7,3,0,
+}
+
+local arr = {
+    5,0,2,0,7,0,0,4,9,
+    0,9,0,2,0,0,6,0,5,
+    0,0,0,9,0,0,3,2,7,
+    0,0,0,0,0,2,9,0,6,
+    0,2,0,4,0,0,7,0,0,
+    3,0,0,1,0,0,4,0,2,
+    0,0,4,0,2,0,5,7,0,
+    2,0,0,5,0,4,0,9,0,
+    0,5,1,0,0,3,2,6,4,
 }
 
 local answer6 = {
@@ -137,20 +149,18 @@ local answer6 = {
     1,	4,	6,	8,	2,	5,	7,	3,	9,
 }
 
-local sudoku = require("Sudoku").new(arr5)
+local sudoku = require("Sudoku").new(arr)
 
-use = 1
---
 print(sudoku:output())
-local typ = 1
+local typ = 2
 if typ == 1 then
-    sudoku:testFun(true)
+    sudoku:getAnswer(false, true)
 else
     sudoku:checkDirty()
-    --print(sudoku:output(true))
+    print(sudoku:output(true))
     local ret = sudoku:checkSuccess()
     if ret == SuccessInfo.UNCOMPLETE then
-        sudoku:guess2()
+        sudoku:gridLinkGuess(true)
     end
 end
 
